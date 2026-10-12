@@ -1,0 +1,18 @@
+{
+    "xgboost": {
+        "class_weight_name": "sqrt",
+        "scale_pos_weight": 3.104533021511996,
+        "trees": 240
+    },
+    "graphsage": {
+        "class_weight_name": "sqrt",
+        "pos_weight": 3.104533021511996,
+        "epochs": 34
+    },
+    "ensemble_gnn_share": 0.15000000000000002,
+    "thresholds": {
+        "xgboost": 0.4472896456718445,
+        "graphsage": 0.8124293088912964,
+        "ensemble": 0.4243689775466919
+    }
+}

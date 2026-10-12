@@ -1,0 +1,5 @@
+,Precision,Recall,F1,ROC_AUC,PR_AUC,Threshold
+XGBoost,0.6879,0.7368,0.7115,0.9317,0.7874,0.4473
+GraphSAGE (mean over seeds),0.6238,0.6329,0.6277,0.8797,0.6469,0.8124
+GraphSAGE (std over seeds),0.0239,0.0195,0.0065,0.0039,0.0172,0.0
+Ensemble,0.668,0.7433,0.7037,0.9079,0.7805,0.4244
