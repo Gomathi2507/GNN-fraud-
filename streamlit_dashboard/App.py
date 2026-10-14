@@ -16,16 +16,19 @@ RESULTS = Path(__file__).parent / "results"
 RUNS = {"All 165 features": "all_features", "Local 93 features only": "local_features_only"}
 
 # ----------------------------------------------------------------------------- palette
-# Cool "case file" palette: pale blue-grey page, white panels, navy ink, one colour per model.
-PAGE, PANEL, LINE = "#F3F5F9", "#FFFFFF", "#DDE2EA"
-INK, MUTED = "#0F172A", "#5B6677"
-ALERT = "#C2123D"
+# Espresso & brass dark palette: warm coffee-brown page, leather panels, parchment-cream text.
+# Model colours are chosen to stand apart from the brown background (brass, verdigris, ivory).
+PAGE, PANEL, LINE = "#15100D", "#201914", "#3D3027"
+INK, MUTED = "#F1E7D6", "#A89885"
+GRID = "#2C231C"
+ALERT = "#E5484D"
 # label: (probability column, config key, colour, row name in the metrics table)
 MODELS = {
-    "XGBoost": ("xgboost_prob", "xgboost", "#0E7C86", "XGBoost"),
-    "GraphSAGE": ("graphsage_prob", "graphsage", "#6D3FD0", "GraphSAGE (mean over seeds)"),
-    "Ensemble": ("ensemble_prob", "ensemble", "#4B5A70", "Ensemble"),
+    "XGBoost": ("xgboost_prob", "xgboost", "#E0A83A", "XGBoost"),
+    "GraphSAGE": ("graphsage_prob", "graphsage", "#4FB39A", "GraphSAGE (mean over seeds)"),
+    "Ensemble": ("ensemble_prob", "ensemble", "#EDE3D0", "Ensemble"),
 }
+RUN_BAR_COLORS = ["#C8693F", "#8E7F70"]  # all features / local only in the grouped bar chart
 COLLAPSE_F1 = 0.2  # a step counts as "collapsed" when every model's F1 stays below this
 
 st.set_page_config(page_title="Elliptic fraud detection", page_icon="🔎", layout="wide")
@@ -41,7 +44,7 @@ header[data-testid="stHeader"] {{background:transparent;}}
 section[data-testid="stSidebar"] {{background:{PANEL}; border-right:1px solid {LINE};}}
 h1 {{font-weight:700 !important; letter-spacing:-0.025em; font-size:2.1rem !important; margin-bottom:.2rem;}}
 h2, h3 {{font-weight:600 !important; letter-spacing:-0.01em;}}
-.verdict {{font-size:1.08rem; color:#334155; max-width:44rem; line-height:1.6; margin:.3rem 0 1.5rem;}}
+.verdict {{font-size:1.08rem; color:#D3C7B6; max-width:44rem; line-height:1.6; margin:.3rem 0 1.5rem;}}
 .verdict b {{color:{INK};}}
 .kpis {{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:1.6rem;}}
 .kpi {{background:{PANEL}; border:1px solid {LINE}; border-left:5px solid var(--c); border-radius:8px; padding:14px 18px;}}
@@ -109,23 +112,25 @@ def detect_shift(steps):
     return int(steps.index.max()) + 1
 
 
-def tint(hex_color, amount=0.55):
-    """Mix a colour with white so dark text stays readable on top of it."""
+def tint(hex_color, amount=0.45):
+    """Mix a colour into the dark panel colour so light text stays readable on top of it."""
     h = hex_color.lstrip("#")
     rgb = [int(h[i:i + 2], 16) for i in (0, 2, 4)]
-    return "#" + "".join(f"{int(255 - (255 - c) * amount):02X}" for c in rgb)
+    base = [int(PANEL.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)]
+    return "#" + "".join(f"{int(b + (c - b) * amount):02X}" for c, b in zip(rgb, base))
 
 
 def style(fig, height=380):
     fig.update_layout(
+        template="plotly_dark",
         height=height, margin=dict(l=10, r=10, t=30, b=10),
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor=PANEL,
         font=dict(family="IBM Plex Sans, sans-serif", color=INK, size=14),
         legend=dict(orientation="h", y=1.14, x=0),
-        hoverlabel=dict(bgcolor=PANEL, font_color=INK),
+        hoverlabel=dict(bgcolor=PANEL, font_color=INK, bordercolor=LINE),
     )
-    fig.update_xaxes(gridcolor="#EEF1F5", zeroline=False, linecolor=LINE, title_font_color=MUTED)
-    fig.update_yaxes(gridcolor="#EEF1F5", zeroline=False, linecolor=LINE, title_font_color=MUTED)
+    fig.update_xaxes(gridcolor=GRID, zeroline=False, linecolor=LINE, title_font_color=MUTED)
+    fig.update_yaxes(gridcolor=GRID, zeroline=False, linecolor=LINE, title_font_color=MUTED)
     return fig
 
 
@@ -195,7 +200,7 @@ with tab1:
             x=steps.index, y=steps[name], name=name, mode="lines+markers",
             line=dict(color=color, width=2 if name == "Ensemble" else 3, dash="dot" if name == "Ensemble" else "solid"),
             marker=dict(size=7), hovertemplate="%{y:.3f}"))
-    fig.add_vrect(x0=shift - 0.5, x1=steps.index.max() + 0.5, fillcolor=ALERT, opacity=0.08, line_width=0,
+    fig.add_vrect(x0=shift - 0.5, x1=steps.index.max() + 0.5, fillcolor=ALERT, opacity=0.15, line_width=0,
                   annotation_text=f"Collapse from step {shift}", annotation_position="top left",
                   annotation_font_color=ALERT)
     fig.update_layout(hovermode="x unified", xaxis_title="Test time step", yaxis_title="F1", yaxis_range=[0, 1.02])
@@ -204,7 +209,7 @@ with tab1:
     st.subheader("With and without the pre-aggregated features")
     metric = st.radio("Metric", ["F1", "Precision", "Recall", "PR_AUC", "ROC_AUC"], horizontal=True)
     fig = go.Figure()
-    for (label, r), color in zip(runs.items(), [INK, "#9AA7BA"]):
+    for (label, r), color in zip(runs.items(), RUN_BAR_COLORS):
         vals = [r[0].loc[v[3], metric] for v in MODELS.values()]
         fig.add_trace(go.Bar(x=list(MODELS), y=vals, name=label, marker_color=color,
                              text=[f"{v:.2f}" for v in vals], textposition="outside"))
@@ -253,8 +258,8 @@ with tab2:
             fig = go.Figure(go.Heatmap(
                 z=rate, x=["Predicted licit", "Predicted illicit"], y=["Actual licit", "Actual illicit"],
                 text=text, texttemplate="%{text}", showscale=False, zmin=0, zmax=1, xgap=3, ygap=3,
-                textfont=dict(color=INK, size=14),
-                colorscale=[[0, "#F8FAFC"], [1, tint(color, 0.55)]], hoverinfo="skip"))
+                textfont=dict(color="#FFFFFF", size=14),
+                colorscale=[[0, "#120D0A"], [1, tint(color, 0.5)]], hoverinfo="skip"))
             fig.update_yaxes(autorange="reversed")
             show(fig, f"cm_{ckey}", 250)
 
